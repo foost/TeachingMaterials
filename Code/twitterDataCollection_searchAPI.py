@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on Mon Jun 26 2017
+Modified on Mon Jul 11 2017
 
 @author: OstermannFO
 
@@ -21,15 +21,13 @@ import time
 from urllib import unquote
 
 # set query parameters
-QUERY = 'teek,teken,tekenbeet,tekenbeten,lyme, \
-        camping,wandeling, fietstocht,lopen, \
-        kamperen,wandelen,fietsen,spelen' #Comma-separated list of terms
+QUERY = '' #Comma-separated list of terms
 GEOCODE = '' #latitude, longitude, radius, e.g. 52.000000,5.500000,250km
 UNTIL = '' # e.g. 2017-04-01
 MAX_RESULTS = 1000
 
 # set path to output files
-OUTPUT_PATH = 'C:/Users/ostermannfo/Downloads/'
+OUTPUT_PATH = ''
 
 # add authentification details 
 CONSUMER_KEY = ''

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on Wed Jun 21 2017
+Modified on Wed Jul 11 2017
 
 @author: OstermannFO
 
@@ -20,10 +20,10 @@ import time
 
 # set query parameters
 TRACK = '' #Comma-separated list of terms
-LOCATIONS = '6.7,52.1,7.1,52.3' #bounding box
+LOCATIONS = '' #bounding box
 
 # set path to output files
-OUTPUT_PATH = 'C:/Users/ostermannfo/Downloads/'
+OUTPUT_PATH = ''
 
 # add authentification details 
 CONSUMER_KEY = ''
