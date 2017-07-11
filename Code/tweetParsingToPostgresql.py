@@ -25,9 +25,9 @@ import sys
 # 
 
 CONN_DB = '' 
-PATH = "path/to/files"
+PATH = "path/to/files/"
 IN_FILE_EXT = ".extensionToBeSearchedForInputFiles" 
-LOG_FILE = "logfile name"
+LOG_FILE = "nameOfLogfile"
 
 
 conn=psycopg2.connect(CONN_DB)
@@ -38,13 +38,13 @@ log_file = codecs.open(log_file_name,'a','utf-8')
 
 for f in os.listdir(PATH):
     if f.endswith(IN_FILE_EXT):
-        in_file= PATH + f
-        json_file = codecs.open(in_file,'r','utf-8')
+        in_file_name = PATH + f
+        in_file = codecs.open(in_file_name,'r','utf-8')
 
-        print "Now reading ... " + in_file
+        print "Now reading ... " + in_file_name
         try:
             
-            for line in json_file:
+            for line in in_file:
                 
                 try:
                     Tweet = json.loads(line)
