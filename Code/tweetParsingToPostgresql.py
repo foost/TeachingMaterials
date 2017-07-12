@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on Mon Jun 26 2017
+Modified on Mon Jul 12 2017
 
 @author: OstermannFO
 
@@ -17,8 +17,8 @@ necessary to create INSERT INTO statement manually
 import json
 import psycopg2
 import os
-import codecs
 import sys
+import datetime
 
 #
 #declare variables
@@ -30,22 +30,20 @@ IN_FILE_EXT = ".extensionToBeSearchedForInputFiles"
 LOG_FILE = "nameOfLogfile"
 
 
-conn=psycopg2.connect(CONN_DB)
-cur=conn.cursor()
-
-log_file_name = PATH + LOG_FILE + ".log"
-log_file = codecs.open(log_file_name,'a','utf-8')
-
-for f in os.listdir(PATH):
-    if f.endswith(IN_FILE_EXT):
-        in_file_name = PATH + f
-        in_file = codecs.open(in_file_name,'r','utf-8')
-
-        print "Now reading ... " + in_file_name
-        try:
+def main():
+    conn=psycopg2.connect(CONN_DB)
+    cur=conn.cursor()
+    
+    log_file_name = PATH + LOG_FILE + ".log"
+    log_file = open(log_file_name,'a')
+    
+    for f in os.listdir(PATH):
+        if f.endswith(IN_FILE_EXT):
+            in_file_name = PATH + f
+            in_file = open(in_file_name,'r')    
+            print "Now reading ... " + in_file_name
             
-            for line in in_file:
-                
+            for line in in_file:                
                 try:
                     Tweet = json.loads(line)
                     tweet_id=str(Tweet['id'])
@@ -68,8 +66,7 @@ for f in os.listdir(PATH):
                         place_id=Tweet['place']['id']
                     else:
                         place_name=None
-                        place_id=None
-    
+                        place_id=None    
                     data = (tweet_id,tweet_text,tweet_created,tweet_lon,
                             tweet_lat, user_id,user_name,user_folcount,
                             user_statcount,user_descr,user_loc,place_name,
@@ -85,27 +82,21 @@ for f in os.listdir(PATH):
                         conn.commit()
                     except Exception,e:
                         conn.rollback()
-                        print "DB error, rollback!", sys.exc_info()[0], str(e)
-                        log_file.write("DB error in " 
-                                       + in_file + ": " 
-                                       + str(sys.exc_info()[0]) 
-                                       + " " + str(e)  + "\n")
+                        print "DB error: ", sys.exc_info()[0], e
+                        log_file.write(str(datetime.datetime.today()) 
+                                       + " DB Error in " + in_file_name 
+                                       + " with tweet_id " + tweet_id + " : " 
+                                       + str(e).replace("\n"," ") + "\n")
                 except Exception,e:
-                    print "Error with Tweet!", sys.exc_info()[0], str(e)
-                    log_file.write("Some error in " + in_file 
-                                   + ": " + str(sys.exc_info()[0]) 
-                                   + " " + str(e) + "\n")
-        
-        except Exception,e:
-            print "Unknown error, skipped!", sys.exc_info()[0], str(e), line[:40]
-            log_file.write("Some other error in " 
-                           + in_file + ": " + str(sys.exc_info()[0]) 
-                           + " " + str(e) + "\n")
-        
-        json_file.close()
+                    print "Other Error: ", sys.exc_info()[0], e
+                    log_file.write(str(datetime.datetime.today()) 
+                                    + " Other Error in " + in_file_name 
+                                    + " with tweet_id " + tweet_id + " : " 
+                                    + str(e).replace("\n"," ") + "\n")        
+            in_file.close()
     
-    else:
-        continue
+    conn.close()
+    log_file.close()
 
-conn.close()
-log_file.close()
+if __name__=="__main__":
+    main() 
