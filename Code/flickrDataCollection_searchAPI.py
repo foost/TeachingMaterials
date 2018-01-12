@@ -2,15 +2,17 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on Mon Jun 26 2017
+Modified on 2018-01-11
 
 @author: OstermannFO
 
 flickrdatacollection_searchAPI.py: 
     access FlickrAPI
-    write metadata as JSON objects in text file
+    write metadata as in text file
     
 currently using Python2; 
+code is not optimized for performance or brevity, 
+aims instead for readability and ease of understanding 
 """
 
 import flickrapi
@@ -20,10 +22,10 @@ import sys
 import os
 
 #
-# declare variables
+# declare global USER variables
 #
 
-# output path and file name trunk
+# output path (end with double backslash!) and file name trunk
 PATH = ''
 FILE_OUT_TRUNK = ''
 
@@ -31,11 +33,10 @@ FILE_OUT_TRUNK = ''
 API_KEY = ''
 API_SECRET = ''
 
-# define search query keywords, dates (yyyy-mm-dd) and location;
+# define search query keywords, dates and location;
 # dates should be as 'YYYY-MM-DD'
 # radius unit is km, default is 5
 # bounding box min_lon, min_lat, max_lon, max_lat
-# cannot use lat/lon/radius with empty bbox
 SEARCH_QUERY = ''
 START_DATE = ''
 END_DATE = ''
@@ -50,8 +51,7 @@ SEARCH_EXTRAS = 'date_taken, date_upload, description, owner_name, geo, tags'
 # flow control for this script
 # tags_raw = 'yes' if raw tags should be retrieved; however, this makes 
 # execution much slower; since queries do not return all photos all the time 
-# (Flickr bug), queries with large results sets should not use this, but 
-# instead use the same switch in the preprocessing script
+# (Flickr API bug), queries with large results sets might not want to use this 
 # count_only = 'yes' to execute only initial query returning number of photos
 TAGS_RAW = 'yes' 
 COUNT_ONLY = 'no'
@@ -74,35 +74,48 @@ def replace_chars(text):
                     .replace('"', ' ')\
                     #.replace('\\','/') #this one might clash with unicode
         return text
-        
-#
-# start actual work
-#
+ 
+# function to search if bounding box is given
+def search_latlonrad(flickr,min_taken_date,max_taken_date,page):
+    search_results = flickr.photos_search(
+                text = SEARCH_QUERY,
+                min_taken_date = min_taken_date,
+                max_taken_date = max_taken_date,
+                extras = SEARCH_EXTRAS,
+                lat = LAT,
+                lon = LON,
+                radius = RADIUS, 
+                page = page)
+    return search_results            
+
+# function to search if lat/lon and radius are given
+def search_bbox(flickr,min_taken_date,max_taken_date,page):
+    search_results = flickr.photos_search(
+                text = SEARCH_QUERY,
+                min_taken_date = min_taken_date,
+                max_taken_date = max_taken_date,
+                extras = SEARCH_EXTRAS,
+                bbox = BBOX,
+                page = page)        
+    return search_results
+
 def main():    
     # create flickr instance
     flickr = flickrapi.FlickrAPI(API_KEY, API_SECRET)
     flickr.authenticate_via_browser(perms='read')
-    
-    # get total number of search results for info file
+
+    # get total number of search results
+    # cannot use lat/lon/radius with an empty bbox, therefore IF-THEN
     if BBOX == '':
-        search_results = flickr.photos_search(text = SEARCH_QUERY,
-                        min_taken_date = START_DATE,
-                        max_taken_date = END_DATE,
-                        lat = LAT,
-                        lon = LON,
-                        radius = RADIUS)
+        search_results = search_latlonrad(flickr,START_DATE,END_DATE,0)
     else:
-        search_results = flickr.photos_search(text = SEARCH_QUERY,
-                            min_taken_date = START_DATE,
-                            max_taken_date = END_DATE,
-                            bbox = BBOX)
+        search_results = search_bbox(flickr,START_DATE,END_DATE,0)
     
-    photos_element = search_results.find('photos')
-    photos_query_total = photos_element.get('total')
+    photos_query_total = search_results.find('photos').get('total')
+    print "Total number of photos according to API: " + str(photos_query_total)
     
-    if COUNT_ONLY == 'yes':
-        print photos_query_total
-        sys.exit()
+    if COUNT_ONLY == 'yes':    
+        sys.exit("exiting...")
     
     # create new directory if necessary and write meta data to info file
     new_dir = "%s%s\\" %(PATH, FILE_OUT_TRUNK)
@@ -112,28 +125,22 @@ def main():
         except: 
             print "Could not create new directory!"
             sys.exit()
-    # info on search query
+    
+    # info file on search query
     f_info=open(new_dir + FILE_OUT_TRUNK + "_info.txt", 'w')
-    f_info.write('Search started: ' + str(datetime.date.today()) + '\n')
-    f_info.write('Search Query: ' + SEARCH_QUERY + '\n')
-    f_info.write('Start Date: ' + START_DATE + '\n')
-    f_info.write('End Date: ' + END_DATE + '\n')
-    f_info.write('Lat , lon , bbox: ' + LAT + LON + BBOX + '\n')
-    f_info.write('Extras retrieved: ' + SEARCH_EXTRAS + '\n')
-    f_info.write('Raw tags retrieved: ' + TAGS_RAW + '\n')
+    f_info.write('query_time, query, start_date, end_date, lat, lon, bbox,'\
+                 ' extras, raw_tags, number_of_photos,'\
+                 ' counted, ignored, processed\n')
     
     header = ""
     for column in PHOTO_ATTR_LIST:
-        header = header + column + '\t'
-    header = header + 'tags_raw\t'
+        header += column + '\t'
+    header += 'tags_raw\t'
     for column in PHOTO_SUBELEM_LIST:
-        header = header + column + '\t'
+        header += column + '\t'
     #for column in owner_subelements_list:
-    #    header = header + column + '\t'
+    #    header += column + '\t'
     header = header.rstrip('\t')
-    
-    f_info.write('Columns: ' + header + '\n')
-    f_info.write('Number of photos in query: ' + photos_query_total + '\n')
     
     # start actual retrieval of data
     # first convert query dates to integer
@@ -143,11 +150,13 @@ def main():
     # initiate counters and list to filter out duplicates
     counter = 0
     ignored = 0
-    committed = 0
+    processed = 0
     fid_list = []
     
     # end_iter +1 needed to get last day
     for i in range (start_iter, end_iter+1):
+        
+        print "day ",str(i),
         
         # open daily output file
         query_date = datetime.date.fromordinal(i)
@@ -155,70 +164,44 @@ def main():
                          str(query_date) + ".tsv", 'w')
         f_results.write(header + "\n")
     
-        # using single days retrieves more reliable results
+        # using single days +-1 retrieves more reliable results
         min_query_date = datetime.date.fromordinal(i-1)
         max_query_date = datetime.date.fromordinal(i+1)        
         if BBOX == '':
-            search_results_daily = flickr.photos_search(text = SEARCH_QUERY,
-                                    min_taken_date = min_query_date,
-                                    max_taken_date = max_query_date,
-                                    extras = SEARCH_EXTRAS,
-                                    lat = LAT,
-                                    lon = LON,
-                                    radius = RADIUS)
+            search_results_daily = search_latlonrad(flickr,min_query_date,max_query_date,0)
         else:
-            search_results_daily = flickr.photos_search(text = SEARCH_QUERY,
-                                    min_taken_date = min_query_date,
-                                    max_taken_date = max_query_date,
-                                    extras = SEARCH_EXTRAS,
-                                    bbox = BBOX)
+            search_results_daily = search_bbox(flickr,min_query_date,max_query_date,0)
         
         # to avoid rate limits, wait one second after api call
         time.sleep(1)
-        photos_element_daily = search_results_daily.find('photos')
-        pages_daily = photos_element_daily.get('pages')
-        #photos_daily = photos_element_daily.get('total')
         
         # iterate over pages; it is possible to specify number of photos per 
-        # page, but this is unreliable and does change maximum number of photos
-        # per query (always 4000); therefore best to leave it at default 
-        # (100 photos per page)
-        page = 0
-        while page <= int(pages_daily):    
-            page = page + 1
+        # page, but it does not change maximum number of photos per query
+        # (always 4000); therefore best to leave it at default (100 photos per page)
+        print "page ",
+        for i in range (int(search_results_daily.find('photos').get('pages'))+2):
+            print str(i),
+            # try statement needed because there occasional API errors
             try:
                 if BBOX == '':
-                    search_results_daily_paginated = \
-                        flickr.photos_search(text = SEARCH_QUERY,
-                                             min_taken_date = min_query_date,
-                                             max_taken_date = max_query_date,
-                                             extras = SEARCH_EXTRAS,
-                                             lat = LAT,
-                                             lon = LON,
-                                             radius = RADIUS,
-                                             page = page)
+                    search_results_daily_paginated = search_latlonrad(
+                            flickr,min_query_date,max_query_date, i)
                 else:
-                    search_results_daily_paginated = \
-                        flickr.photos_search(text = SEARCH_QUERY,
-                                             min_taken_date = min_query_date,
-                                             max_taken_date = max_query_date,
-                                             extras = SEARCH_EXTRAS,
-                                             bbox = BBOX,
-                                             page = page)
+                    search_results_daily_paginated = search_bbox(
+                            flickr,min_query_date,max_query_date, i)
                                 
                 # to avoid rate limits, wait one second after api call
                 time.sleep(1)
         
                 # Iterate over photos in page
-                photo_iter = \
-                    search_results_daily_paginated.getiterator('photo')   
+                photo_iter = search_results_daily_paginated.getiterator('photo')   
                 for photo in photo_iter:
-                    counter = counter + 1
+                    counter += 1
                     try: 
                         fid = photo.get('id')
                         # check whether photo has already been processed
                         if fid in fid_list: 
-                            ignored = ignored + 1
+                            ignored += 1
                             break
                         fid_list.append(fid)
                         out_row = fid.encode('utf-8') + '\t'             
@@ -227,16 +210,14 @@ def main():
                             value = photo.get(attribute)             
                             # convert datetaken into posix timestamp
                             if attribute == 'datetaken':
-                                value = \
-                                    time.mktime(datetime.datetime.strptime( \
-                                    value, "%Y-%m-%d %H:%M:%S").timetuple())
-                                out_row = out_row + \
-                                    str(int(value)).encode('utf-8') + '\t'
+                                value = time.mktime(datetime.datetime.strptime(
+                                        value, "%Y-%m-%d %H:%M:%S").timetuple())
+                                out_row += str(int(value)).encode('utf-8') + '\t'
                             else:
                                 if value is None:
                                     value = 'NODATA'
                                 value = replace_chars(value)
-                                out_row = out_row + value.encode('utf-8') + '\t'
+                                out_row += value.encode('utf-8') + '\t'
                         
                         if TAGS_RAW == 'yes':
                             raw_tags = ''
@@ -248,11 +229,11 @@ def main():
                             for tag in tag_iter:
                                 raw_tag = tag.get('raw')
                                 raw_tag = replace_chars(raw_tag)
-                                raw_tags = raw_tags + raw_tag + "~"
+                                raw_tags += raw_tag + "~"
                             raw_tags = raw_tags.rstrip('~')
                         else: 
                             raw_tags = "NOTQUERIED"
-                        out_row = out_row + raw_tags.encode('utf-8') + '\t'
+                        out_row += raw_tags.encode('utf-8') + '\t'
                             
                         for photo_subelement in PHOTO_SUBELEM_LIST:
                             value = photo.find(photo_subelement).text
@@ -260,10 +241,10 @@ def main():
                                 value = 'NODATA'
                             else:
                                 value = replace_chars(value)
-                            out_row = out_row + value.encode('utf-8')   
+                            out_row += value.encode('utf-8')   
                         
                         f_results.write(out_row + '\n')
-                        committed = committed + 1
+                        processed += 1
                     
                     except Exception as e: 
                         print "Problem with photo!", sys.exc_info()[0], str(e)
@@ -271,15 +252,14 @@ def main():
             except Exception as e:
                  print "Problem with search page!", sys.exc_info()[0], str(e)
                                           
-        print query_date, photos_query_total, counter, ignored, committed, \
-            len(fid_list)
-        f_results.close()
+        print "\n",query_date, photos_query_total, counter, ignored, processed
+        f_results.close()  
     
-    results_summary = 'Total retrieved/ignored/stored: %i/%i/%i' \
-        %(counter, ignored, committed)
-    print results_summary
+    f_info.write('{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(
+                 datetime.date.today(),SEARCH_QUERY,START_DATE,
+                 END_DATE,LAT,LON,BBOX,SEARCH_EXTRAS,TAGS_RAW,
+                 photos_query_total, counter, ignored, processed))
     
-    f_info.write(results_summary)    
     f_info.close()
 
 if __name__=="__main__":
