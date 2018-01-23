@@ -10,7 +10,6 @@ twitterdatacollection_searchAPI.py:
     access TwitterSeachAPI
     write Tweets as JSON objects in text file
 
-example using Dutch tick-related keywords    
 currently using Python2; for Python3, replace unicode with str (untested!)
 """
 

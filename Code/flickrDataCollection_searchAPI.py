@@ -59,8 +59,7 @@ COUNT_ONLY = 'no'
 # list of values to be written to file
 # owner_subelements_list currently not used
 PHOTO_ATTR_LIST = ['id', 'title', 'owner', 'ownername', 'datetaken', 
-                   'dateupload', 'latitude', 'longitude', 'accuracy', 
-                   'granularity', 'tags']
+                   'dateupload', 'latitude', 'longitude', 'accuracy', 'tags']
 PHOTO_SUBELEM_LIST = ['description']
 #owner_subelements_list = ['realname', 'location'] 
 

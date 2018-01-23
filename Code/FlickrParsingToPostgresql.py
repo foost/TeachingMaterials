@@ -48,27 +48,26 @@ def main():
                     fid = fields[0]
                     title = fields[1]
                     uid = fields[2]
-                    owner = fields[3]
+                    uname = fields[3]
                     date_up = fields[4]
                     date_taken = fields[5]
                     lat = fields[6]
                     lon = fields[7]
                     acc = fields[8]
-                    gran = fields[9]
-                    tags_flickr = fields[10]
-                    tags_user = fields[11]
-                    descr = fields[12]
+                    tags_flickr = fields[9]
+                    tags_user = fields[10]
+                    descr = fields[11]
     
-                    data = (fid,title,uid,owner,date_up,date_taken,lat,lon,
-                            acc,gran,tags_flickr,tags_user,descr,)
+                    data = (fid,title,uid,uname,date_up,date_taken,lat,lon,
+                            acc,tags_flickr,tags_user,descr,)
                     
                     try: 
                         
                         cur.execute(
-                            """INSERT INTO flickr_table (FID,TITLE,UID,
-                            DATE_UP,DATE_TAKEN,LAT,LON,ACC,GRAN,
+                            """INSERT INTO flickr_table (FID,TITLE,UID,UNAME,
+                            DATE_UP,DATE_TAKEN,LAT,LON,ACC,
                             TAGS_FLICKR,TAGS_USER,DESCR) VALUES 
-                            (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+                            (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                             """, data)
                         conn.commit()
                         
@@ -91,6 +90,7 @@ def main():
     cur.execute(
             """UPDATE flickr_table SET the_geom = ST_SetSRID(
             ST_Point(lon,lat),4326) WHERE the_geom IS NULL""")        
+    conn.commit()
     conn.close()
     log_file.close()
 
