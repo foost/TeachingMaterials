@@ -23,7 +23,8 @@ from urllib import unquote
 QUERY = '' #Comma-separated list of terms
 GEOCODE = '' #latitude, longitude, radius, e.g. 52.000000,5.500000,250km
 UNTIL = '' # e.g. 2017-04-01
-MAX_RESULTS = 1000
+MAX_RESULTS = 1000 # up to 1000, default 200
+SINCE_ID = # lowest, i.e. oldest Tweet ID to be returned
 
 # set path to output files
 OUTPUT_PATH = ''
@@ -68,7 +69,7 @@ def main():
     twitter_api = oauth_login()          
     filename = time.strftime("%Y%m%d-%H%M%S")    
     results = twitter_search(twitter_api, QUERY, MAX_RESULTS, 
-                             geocode=GEOCODE, until=UNTIL)
+                             geocode=GEOCODE, until=UNTIL, since_id = SINCE_ID)
     for result in results:
         save_json(filename, result)
     #Show one sample search result by slicing the list...
