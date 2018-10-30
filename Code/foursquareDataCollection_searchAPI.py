@@ -22,7 +22,6 @@ https://developer.foursquare.com/docs/venues/search
 Querying the API using a point grid to work around the limitation of 50 
 returned results per query. However, watch out for rate limits of 5000 
 userless queries per hour.
-example set to Enschede
 """
 
 import foursquare
