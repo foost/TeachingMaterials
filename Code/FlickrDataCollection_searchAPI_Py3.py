@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on 2018-01-11
+Modified on 2020-02-27
 
 @author: OstermannFO
 
@@ -10,7 +10,6 @@ flickrdatacollection_searchAPI.py:
     access FlickrAPI
     write metadata as in text file
     
-currently using Python2; 
 code is not optimized for performance or brevity, 
 aims instead for readability and ease of understanding 
 """
