@@ -77,7 +77,8 @@ def main():
                             user_descr,user_loc,place_name,place_id) 
                             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
                             """, data)
-                        
+                        conn.commit()
+						
                     except Exception as e:
                         conn.rollback()
                         print("DB error: ", sys.exc_info()[0], e)
@@ -91,7 +92,7 @@ def main():
                                     + " Other Error in " + in_file_name 
                                     + " with tweet_id " + tweet_id + " : " 
                                     + str(e).replace("\n"," ") + "\n")        
-            conn.commit()
+            
             in_file.close()
     
     conn.close()
