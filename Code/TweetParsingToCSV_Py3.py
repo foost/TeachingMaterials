@@ -9,7 +9,11 @@ TweetParsingToCSV.py:
     reads JSON objects line by line
     parses them and puts desired values in CSV
 
-Python 3 unicode character treatment not validated!
+Python 3 unicode character treatment not validated!;
+only works for Tweets in compatibility mode (e.g. collected
+through standard Streaming API), because it looks for a "text"
+field and not a "full_text" field, therefore it does not parses
+any extended Tweets
 """
 
 import json

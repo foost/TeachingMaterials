@@ -10,7 +10,8 @@ twitterdatacollection_streaming.py:
     access TwitterStreamingAPI
     write Tweets as JSON objects in text file
     
-currently using Python2; for Python3, replace unicode with str (untested!)
+currently using Python2; 
+for Python3, replace unicode with str (untested!)
 """
 
 import twitter
