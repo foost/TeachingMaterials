@@ -1,4 +1,4 @@
-# Various teaching materials
+# Various teaching materials for geosocial media processing
 
 This repository contains assorted scripts and materials for demonstrating geosocial media processing at the introductory level in several courses where I teach. 
 
