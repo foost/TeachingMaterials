@@ -12,7 +12,7 @@ currently using Python2;
 necessary to create INSERT INTO statement manually;
 only works for Tweets in compatibility mode (e.g. collected
 through standard Streaming API), because it looks for a "text"
-field and not a "full_text" field, therefore it does not parses
+field and not a "full_text" field, therefore it does not parse
 any extended Tweets
 """
 

@@ -11,7 +11,8 @@ foursquaredatacollection_searchAPI.py:
     write selected metadata in text file
     
 currently using Python2; 
-This script is based on the information contained in the Foursquare API and the
+
+script is based on the information contained in the Foursquare API and the
 Python wrapper documentation. 
 https://developer.foursquare.com/start/search
 https://github.com/mLewisLogic/foursquare

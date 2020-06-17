@@ -9,6 +9,7 @@ builds term vectors by lexical matching, using stemmed terms
 table in database needs to have vector fields ready and empty;
 INSERT statement and other database-related parameters need to be 
 manually adjusted
+v2 simplified to use only one term list and create only one vector
 """
 
 #
