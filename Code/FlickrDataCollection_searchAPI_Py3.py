@@ -207,6 +207,7 @@ def main():
                         for attribute in PHOTO_ATTR_LIST[1:]:                
                             value = photo.get(attribute)             
                             # convert datetaken into posix timestamp
+                            # dateupload already posix timestamp
                             if attribute == 'datetaken':
                                 value = time.mktime(datetime.datetime.strptime(
                                         value, "%Y-%m-%d %H:%M:%S").timetuple())

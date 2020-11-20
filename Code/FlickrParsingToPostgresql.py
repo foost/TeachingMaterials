@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on 2018-01-12
-
 @author: OstermannFO
 
 FlickrParsingToPostgresql_London.py: 
