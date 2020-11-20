@@ -4,101 +4,129 @@
 """
 @author: OstermannFO
 
-tweetparsingtopostgresql.py: 
-    reads JSON objects line by line
-    parses them and puts desired values in database
-    
-currently using Python2;
-necessary to create INSERT INTO statement manually;
-only works for Tweets in compatibility mode (e.g. collected
-through standard Streaming API), because it looks for a "text"
-field and not a "full_text" field, therefore it does not parse
-any extended Tweets
+LondonTweetsProcessing
+	reads JSON objects line by line
+	parses them and puts desired values in database
+	looks for extended Tweets
+	ignores errors on single Tweets (e.g. duplicates)
+	updates timestamp column
+
+necessary to create INSERT INTO statement manually
 """
 
 import json
 import psycopg2
 import os
 import sys
+import codecs
 import datetime
 
 #
 #declare variables
 # 
 
-CONN_DB = '' 
-PATH = "path/to/files/"
-IN_FILE_EXT = ".extensionToBeSearchedForInputFiles" 
-LOG_FILE = "nameOfLogfile"
-
+CONN_DB = ""
+IN_PATH = ""
+IN_FILE_EXT = ".txt" 
+LOG_FILE_NAME = ""
 
 def main():
-    conn=psycopg2.connect(CONN_DB)
-    cur=conn.cursor()
-    
-    log_file_name = PATH + LOG_FILE + ".log"
-    log_file = open(log_file_name,'a')
-    
-    for f in os.listdir(PATH):
-        if f.endswith(IN_FILE_EXT):
-            in_file_name = PATH + f
-            in_file = open(in_file_name,'r')    
-            print "Now reading ... " + in_file_name
-            
-            for line in in_file:                
-                try:
-                    Tweet = json.loads(line)
-                    tweet_id=str(Tweet['id'])
-                    tweet_text=Tweet['text']
-                    tweet_created=Tweet['created_at']
-                    if Tweet['coordinates']:
-                        tweet_lon=str(Tweet['coordinates']['coordinates'][0])
-                        tweet_lat=str(Tweet['coordinates']['coordinates'][1])
-                    else:
-                        tweet_lon=None
-                        tweet_lat=None
-                    user_id=Tweet['user']['id_str']
-                    user_name=Tweet['user']['screen_name']
-                    user_folcount=str(Tweet['user']['followers_count'])
-                    user_statcount=str(Tweet['user']['statuses_count'])
-                    user_descr=Tweet['user']['description']
-                    user_loc=Tweet['user']['location']
-                    if Tweet['place']:
-                        place_name=Tweet['place']['full_name']
-                        place_id=Tweet['place']['id']
-                    else:
-                        place_name=None
-                        place_id=None    
-                    data = (tweet_id,tweet_text,tweet_created,tweet_lon,
-                            tweet_lat, user_id,user_name,user_folcount,
-                            user_statcount,user_descr,user_loc,place_name,
-                            place_id,)
-                    try:
-                        cur.execute(
-                            """INSERT INTO tweet_db(tweet_id,tweet_text,
-                            tweet_created,tweet_lon,tweet_lat,
-                            user_id,user_name,user_folcount,user_statcount,
-                            user_descr,user_loc,place_name,place_id) 
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
-                            """, data)
-                        conn.commit()
-                    except Exception,e:
-                        conn.rollback()
-                        print "DB error: ", sys.exc_info()[0], e
-                        log_file.write(str(datetime.datetime.today()) 
-                                       + " DB Error in " + in_file_name 
-                                       + " with tweet_id " + tweet_id + " : " 
-                                       + str(e).replace("\n"," ") + "\n")
-                except Exception,e:
-                    print "Other Error: ", sys.exc_info()[0], e
-                    log_file.write(str(datetime.datetime.today()) 
-                                    + " Other Error in " + in_file_name 
-                                    + " with tweet_id " + tweet_id + " : " 
-                                    + str(e).replace("\n"," ") + "\n")        
-            in_file.close()
-    
-    conn.close()
-    log_file.close()
+
+	conn=psycopg2.connect(CONN_DB)
+	cur=conn.cursor()
+
+	log_file = codecs.open(LOG_FILE_NAME,'a','utf-8')
+
+	for f in os.listdir(IN_PATH):
+	
+		if f.endswith(IN_FILE_EXT):
+		
+			in_file_name = IN_PATH + f
+			in_file = codecs.open(in_file_name,'r','utf-8')
+			print("Now reading ... " + in_file_name)
+
+			for line in in_file:
+
+				try:
+				
+					tweet = json.loads(line)
+					tw_id = tweet['id_str']
+					if 'extended_tweet' in tweet:
+						tw_text = tweet['extended_tweet']['full_text']
+					else:
+						tw_text = tweet['text']
+					tw_cr = tweet['created_at']
+					if 'retweeted_status' in tweet:
+						tw_rt = True
+					else:
+						tw_rt = False
+					tw_lang = tweet['lang']
+					if tweet['coordinates']:
+						tw_lon = str(tweet['coordinates']['coordinates'][0])
+						tw_lat = str(tweet['coordinates']['coordinates'][1])
+					else:
+						tw_lon = None
+						tw_lat = None
+					if tweet['place']:
+						place_id = tweet['place']['id']
+						place_name = tweet['place']['full_name']
+					else:
+						place_name = None
+						place_id = None
+					user_id = tweet['user']['id_str']
+					user_loc = tweet['user']['location']
+
+					data = (tw_id,tw_text,tw_rt,tw_cr,tw_lang,tw_lon,tw_lat,
+							place_id,place_name,user_id,user_loc,json.dumps(tweet),)
+
+					try:
+
+						cur.execute(
+							"""INSERT INTO tweet_table(tweet_id,tweet_text,
+							tweet_retweet,tweet_created,tweet_lang,tweet_lon,tweet_lat,
+							place_id,place_name,user_id,user_loc,tweet_json) 
+							VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+							""", data)
+						conn.commit()
+
+					except Exception as e:
+
+						conn.rollback()
+						print("DB Error: ", sys.exc_info()[0], e)
+						log_file.write(str(datetime.datetime.today())
+									   + " Error in " + in_file_name
+									   + " with tweet_id " + tw_id + " : "
+									   + str(e).replace("\n", " ") + "\n")
+
+				except Exception as e:
+
+					print("Other Error: ", sys.exc_info()[0], e)
+					log_file.write(str(datetime.datetime.today())
+									+ " Error in " + in_file_name
+									+ " with tweet_id " + tw_id + " : "
+									+ str(e).replace("\n"," ") + "\n")
+
+			in_file.close()
+
+	try:
+
+		cur.execute(
+			"""SET TIME ZONE '+0';
+			UPDATE tweet_table SET tw_cr_tstz = 
+			to_timestamp(tweet_created, 'Dy Mon DD HH24:MI:SS +0000 YYYY') 
+			WHERE tw_cr_tstz IS NULL;""")
+		conn.commit()
+
+	except Exception as e:
+
+		conn.rollback()
+		print("Update timestamp Error: ", sys.exc_info()[0], e)
+		log_file.write(str(datetime.datetime.today())
+					   + " Update timestamp Error: " +
+					   str(e).replace("\n", " ") + "\n")
+
+	conn.close()
+	log_file.close()
 
 if __name__=="__main__":
-    main() 
+	main()

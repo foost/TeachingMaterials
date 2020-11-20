@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on 2020-02-27
-
 @author: OstermannFO
 
 flickrdatacollection_searchAPI.py: 
     access FlickrAPI
-    write metadata as in text file
+    write metadata in text file
     
 code is not optimized for performance or brevity, 
 aims instead for readability and ease of understanding 

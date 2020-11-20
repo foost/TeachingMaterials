@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
 """
-Modified on 2019-01-08
-
 @author: OstermannFO
 
 TweetParsingToCSV.py: 

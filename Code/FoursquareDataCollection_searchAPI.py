@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on 2019-01-08
-
 @author: OstermannFO
 
 FoursquareDataCollection_searchAPI.py: 

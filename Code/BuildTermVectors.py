@@ -2,18 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-Modified on Fri Jul 14 2017
-
 @author: OstermannFO
 
-BuildTermVectors.py: 
-    builds term vectors by lexical matching of stems
+builds term vectors by lexical matching, using stemmed terms
     
-table in database needs to have vector fields ready and empty
+table in database needs to have vector fields ready and empty;
 INSERT statement and other database-related parameters need to be 
 manually adjusted
-terms to be loaded from one or more files (one keyword per line), which also 
-need to have been stemmed
+v2 simplified to use only one term list and create only one vector
 """
 
 #
@@ -28,112 +24,109 @@ import nltk
 #
 #declare user variables in CAPITALS
 # 
-CONN_DB = "" 
+CONN_DB = ""
 PATH = ""
-TERM_FILES_NAMES = [] 
-LOG_FILE = "BuildTermVector"
+TERM_FILE = ""
+LOG_FILE = ""
 
+def main():
 
-def main():         
     conn = psycopg2.connect(CONN_DB)
-    cur = conn.cursor('server_side_cursor', withhold = True) #for big result sets
+    cur = conn.cursor('server_side_cursor', withhold = True)
     cur2 = conn.cursor()
     stemmer = nltk.PorterStemmer()
 
-    log_file_name = PATH + LOG_FILE + ".log"
+    log_file_name = PATH + LOG_FILE
     log_file = open(log_file_name,'a')
     
-    term_dicts = []
-    term_dicts_index = 0
-
-    # read in the terms to look for
-    for term_file in TERM_FILES_NAMES:
-        term_dicts.append({})
-        file_handle = open(PATH + term_file)
-        dict_index = 0
-        for line in file_handle:
-            term_dicts[term_dicts_index][line.rstrip()] = dict_index
-            dict_index += 1
-        file_handle.close()
-        term_dicts_index += 1
-    try: 
-        # get ids from items to use, needs manual configuration
-        cur.execute("SELECT uid FROM table WHERE some = condition")
-        uids=cur.fetchall()    
-    except Exception,e:
-        uids = []    
-        print "DB error: ", sys.exc_info()[0], e
+    # create dictionary with term:index_number (needed for later adding up found terms
+    term_dict = {}
+    file_handle = open(PATH + TERM_FILE)
+    dict_index = 0
+    for line in file_handle:
+        term_dict[line.rstrip()] = dict_index
+        dict_index += 1
+    file_handle.close()
+    
+    # collect ids of entries to process
+    try:
+        cur.execute("SELECT id FROM table WHERE terms_found IS NULL")
+        gids=cur.fetchall()            
+    except Exception as e:
+        print ("DB error: ", sys.exc_info()[0], e)
         log_file.write(str(datetime.datetime.today()) 
-                        + " DB Error SELECT while fetching records: " 
-                        + str(e).replace("\n"," ") + "\n")
-   
-    number_records = len(uids)
-    counter=1
-    pattern = re.compile('[\W_]+', re.UNICODE) #remove problematic characters
-    # iterate over results
-    for uid in uids:
-        str_uid = str(uid[0])
+                       + " DB Error SELECT while fetching records: " 
+                       + str(e).replace("\n"," ") + "\n")
+        gids = []
+    
+    number_records = len(gids)
+    counter = 1
+    
+    # create pattern to remove unwanted characters from input string
+    pattern = re.compile('[\W_]+')
+    
+    for gid in gids:
+
+        str_gid = str(gid[0])
         input_unigrams = []
         found_terms = []
-        term_vectors = []
-        # create empty term vectors
-        for term_dict in term_dicts:
-            term_vector = [0] * len(term_dict)
-            term_vectors.append(term_vector)
-             
+        term_vector = [0] * len(term_dict)
+        
+        # retrieve data for finding terms
         try:
-            # retrieve input text to look for terms, needs manual configuration
-            cur2.execute("SELECT text FROM table WHERE uid = '"
-                        + str_uid + "'")
+            cur2.execute('SELECT field1, field2, field3 FROM table WHERE gid = '
+                        + str(gid[0]))
             input_text = cur2.fetchall()
-        except Exception,e:
+        except Exception as e:
             conn.rollback()
-            print "DB error: ", sys.exc_info()[0], e
+            print ("DB error: ", sys.exc_info()[0], e)
             log_file.write(str(datetime.datetime.today()) 
-                           + " DB Error SELECT Tweet id " 
-                           + str_uid + " : " 
+                           + " DB Error SELECT FLickr id " 
+                           + str_gid + " : " 
                            + str(e).replace("\n"," ") + "\n")
-            print str(counter) + " of " + str(number_records) 
+            print (str(counter) + " of " + str(number_records)) 
             counter += 1
             continue
-        
-        unigrams = unicode(input_text[0]).split(" ")
-        # build list of input unigrams
-        for unigram in unigrams:
-            input_unigrams.append(pattern.sub('', unigram.lower()))
-        # look for matching terms and update term vector(s)
+
+        # actual processing of input strings
+        # split input up and replace unwanted characters
+        for input_element in input_text[0]:
+            unigrams = re.split(' |,', str(input_element)) # or any other delimiters
+            for unigram in unigrams:
+                input_unigrams.append(pattern.sub('', unigram.lower()))
+        # create term vector
         for input_unigram in input_unigrams:
             input_unigram_stemmed = stemmer.stem(input_unigram)
-            for x in range(0,len(term_dicts)):  
-                if input_unigram_stemmed in term_dicts[x]:
-                    term_vectors[x][term_dicts[x][input_unigram_stemmed]] += 1
-                    found_terms.append(input_unigram_stemmed)
+            if input_unigram_stemmed in term_dict:
+                term_vector[term_dict[input_unigram_stemmed]] += 1
+                found_terms.append(input_unigram_stemmed)
         if not found_terms:
             found_terms = '0'
         else:
             found_terms = ','.join(str(s) for s in found_terms)
-        # create input for SQL statement
-        data = ()
-        for x in range(0,len(term_dicts)):
-            data = data + ((' '.join(str(i) for i in term_vectors[x])),)
-        data = data + (found_terms, str_uid)
-        try:  
-            cur2.execute("""UPDATE table
-                        SET (%s) = 
-                        (%s) 
-                        WHERE uid = (%s);""", data) # needs manual update
-            conn.commit()
-        except Exception,e:
-            conn.rollback()
-            print "DB error: ", sys.exc_info()[0], e
-            log_file.write(str(datetime.datetime.today()) 
-                           + " DB Error UPDATE Tweet id " 
-                           + str_uid + " : " 
-                           + str(e).replace("\n"," ") + "\n")    
         
-        print str(counter) + " of " + str(number_records) 
+        # insert into table
+        data = ('{'+','.join(str(i) for i in term_vector)+'}',
+                found_terms, 
+                str_gid)
+
+        try:
+            cur2.execute("""UPDATE table
+                        SET (term_vector, terms_found) =
+                        (%s,%s)
+                        WHERE gid = (%s);""", data)
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print ("DB error: ", sys.exc_info()[0], e)
+            log_file.write(str(datetime.datetime.today())
+                           + " DB Error UPDATE with FLickr id "
+                           + str_gid + " : "
+                           + str(e).replace("\n"," ") + "\n")
+
+        print (str(counter) + " of " + str(number_records))
         counter += 1
-         
+
     conn.close()    
     log_file.close()
 

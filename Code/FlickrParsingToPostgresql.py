@@ -8,7 +8,7 @@ FlickrParsingToPostgresql_London.py:
     reads Flickr photo metadata line by line
     parses them and puts desired values in database
     
-currently using Python2;
+currently still using Python2;
 necessary to create INSERT INTO statement manually
 """
 
@@ -37,7 +37,7 @@ def main():
             in_file_name = PATH + f
             in_file = open(in_file_name,'r')
             print "Now reading ... " + in_file_name
-            in_file.next()
+            next(in_file)
             
             for line in in_file:
                 
