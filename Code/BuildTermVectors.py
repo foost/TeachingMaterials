@@ -39,7 +39,7 @@ def main():
     log_file_name = PATH + LOG_FILE
     log_file = open(log_file_name,'a')
     
-    # create dictionary with term:index_number (needed for later adding up found terms
+    # create dictionary with term:index_number (needed for later adding up found terms)
     term_dict = {}
     file_handle = open(PATH + TERM_FILE)
     dict_index = 0
